@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   smart-home-api:
     build:
@@ -5,11 +7,27 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:80"
-    environment:
-      - ENV=production
+    env_file:
+      - .env
+    depends_on:
+      smart-home-db:
+        condition: service_healthy
+    restart: unless-stopped
+
   smart-home-db:
     image: postgres:14.19-trixie
     ports:
       - "5432:5432"
     env_file:
       - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
