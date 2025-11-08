@@ -17,6 +17,12 @@ class DeviceStatusPayload(BaseModel):
     status: bool
 
 
+class DeviceRenamePayload(BaseModel):
+    username: str
+    current_name: str
+    new_name: str
+
+
 @router.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
@@ -27,10 +33,24 @@ def database_health_check() -> dict[str, str]:
     return health_service.check_database()
 
 
+@router.get("/devices")
+def list_user_devices(username: str) -> list[dict[str, str]]:
+    return device_service.list_user_devices(username)
+
+
 @router.post("/devices/status")
 def update_device_status(payload: DeviceStatusPayload) -> dict[str, str]:
     return device_service.update_status(
         username=payload.username,
         device_name=payload.device_name,
         status=payload.status,
+    )
+
+
+@router.patch("/devices/name")
+def rename_device(payload: DeviceRenamePayload) -> dict[str, str]:
+    return device_service.rename_device(
+        username=payload.username,
+        current_name=payload.current_name,
+        new_name=payload.new_name,
     )
