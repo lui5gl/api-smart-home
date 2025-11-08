@@ -3,12 +3,13 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from .services import DeviceService, HealthService
+from .services import DeviceService, HealthService, UserService
 
 
 router = APIRouter()
 health_service = HealthService()
 device_service = DeviceService()
+user_service = UserService()
 
 
 class DeviceStatusPayload(BaseModel):
@@ -28,6 +29,12 @@ class DeviceCreatePayload(BaseModel):
     device_name: str
     serial_number: str
     status: bool | None = False
+
+
+class UserRegistrationPayload(BaseModel):
+    name: str
+    username: str
+    password: str
 
 
 @router.get("/health")
@@ -70,4 +77,13 @@ def add_device(payload: DeviceCreatePayload) -> dict[str, str]:
         device_name=payload.device_name,
         serial_number=payload.serial_number,
         status=payload.status if payload.status is not None else False,
+    )
+
+
+@router.post("/users/register")
+def register_user(payload: UserRegistrationPayload) -> dict[str, str]:
+    return user_service.register(
+        name=payload.name,
+        username=payload.username,
+        password=payload.password,
     )
