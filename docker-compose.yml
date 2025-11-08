@@ -1,5 +1,5 @@
 services:
-  api:
+  smart-home-api:
     build:
       context: .
       dockerfile: Dockerfile
@@ -7,3 +7,9 @@ services:
       - "8080:80"
     environment:
       - ENV=production
+  smart-home-db:
+    image: postgres:13
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
