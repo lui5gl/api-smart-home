@@ -1,0 +1,11 @@
+version: '3.9'
+
+services:
+  api:
+    image: myapi:latest
+    ports:
+      - "8080:80"
+    environment:
+      - ENV=production
+    depends_on:
+      - db
