@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 from typing import Iterable
 
+from ..security import hash_password
 from .database import Database
 
 
@@ -12,6 +14,9 @@ class DatabaseSeeder:
 
     def __init__(self, database: Database | None = None) -> None:
         self._db = database or Database()
+        self._admin_username = os.getenv("ADMIN_USERNAME", "admin")
+        self._admin_name = os.getenv("ADMIN_NAME", "Administrator")
+        self._admin_password = os.getenv("ADMIN_PASSWORD", "changeme")
 
     def _execute_statements(self, statements: Iterable[str]) -> None:
         with self._db.cursor() as cur:
@@ -67,7 +72,11 @@ class DatabaseSeeder:
                 VALUES (%s, %s, %s, NOW())
                 ON CONFLICT (username) DO NOTHING;
                 """,
-                ("Admin", "admin", "changeme"),
+                (
+                    self._admin_name,
+                    self._admin_username,
+                    hash_password(self._admin_password),
+                ),
             )
 
     def run_all(self) -> dict[str, str]:
@@ -104,5 +113,5 @@ class DatabaseSeeder:
                 )
                 ON CONFLICT (device_id, user_id) DO NOTHING;
                 """,
-                ("Thermostat", "admin", True),
+                ("Thermostat", self._admin_username, True),
             )

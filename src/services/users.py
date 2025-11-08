@@ -1,12 +1,9 @@
 """Service layer for user-related operations."""
 
-from passlib.context import CryptContext
 from fastapi import HTTPException
 
 from ..database import Database
-
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from ..security import hash_password
 
 
 class UserService:
@@ -16,7 +13,7 @@ class UserService:
         self._db = database or Database()
 
     def register(self, name: str, username: str, password: str) -> dict[str, str]:
-        hashed_password = pwd_context.hash(password)
+        hashed_password = hash_password(password)
 
         with self._db.cursor() as cur:
             cur.execute(
