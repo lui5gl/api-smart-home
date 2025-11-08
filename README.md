@@ -1,67 +1,67 @@
-# Smart Home API – Functional Overview
+# Smart Home API – Descripción Funcional
 
-This backend coordinates three things: user accounts, smart devices, and the relationships between them. Everything is exposed through a FastAPI HTTP surface, and all persistence happens in PostgreSQL via a thin service layer that validates ownership rules before touching the database.
+Este backend coordina tres piezas: cuentas de usuario, dispositivos inteligentes y las relaciones entre ambos. Todo se expone mediante FastAPI, mientras que la persistencia vive en PostgreSQL a través de una capa de servicios que valida la propiedad antes de ejecutar cualquier operación.
 
-## High-Level Flow
-1. **Environment bootstrap** – `ensure_env_file()` (called at startup in `src/app.py`) guarantees there is a `.env` with strong secrets. Values in that file drive both containers and the application code.
-2. **Schema management** – `SeedService` invokes `DatabaseSeeder.run_all()` on every boot. In `development` it first drops the managed tables, ensuring each run starts fresh; in `production` it only creates missing tables.
-3. **Request handling** – `src/routes.py` wires HTTP routes to specific services: `HealthService`, `DeviceService`, and `UserService`. Routes only transform payloads; all business rules live in those services.
+## Flujo General
+1. **Arranque del entorno** – `ensure_env_file()` (ejecutado al iniciar `src/app.py`) garantiza la existencia de un `.env` con secretos seguros. Esos valores alimentan a los contenedores y al código.
+2. **Gestión del esquema** – `SeedService` llama a `DatabaseSeeder.run_all()` en cada arranque. Si `ENV=development`, primero elimina las tablas gestionadas para empezar desde cero; en `production` solo crea las faltantes.
+3. **Atención de solicitudes** – `src/routes.py` conecta los endpoints HTTP con `HealthService`, `DeviceService` y `UserService`. Las rutas solo validan/parsean datos; las reglas viven en los servicios.
 
-## Data Model
-- **users** – Represents an account with `name`, unique `username`, and a bcrypt-hashed `password`. `last_entry`, `created_at`, and `updated_at` keep audit info.
-- **devices** – Represents a physical item. Each device has a `name` (friendly label), a unique `serial_number`, and timestamps.
-- **account_devices** – Join table linking a user to a device, plus the device `status` (`on/off`). A unique constraint on `(device_id, user_id)` prevents duplicate associations and acts as the authorization oracle for any device action.
+## Modelo de Datos
+- **users** – Cuenta de usuario con `name`, `username` único y `password` en bcrypt. Campos `last_entry`, `created_at` y `updated_at` guardan auditoría.
+- **devices** – Dispositivo físico con `name` (alias amigable), `serial_number` único y marcas de tiempo.
+- **account_devices** – Tabla puente que une usuarios y dispositivos, añade `status` (`on/off`) y obliga a unicidad `(device_id, user_id)` para validar propiedad.
 
-## Service Responsibilities
+## Servicios Principales
 ### HealthService (`src/services/health.py`)
-Runs `SELECT 1` to confirm database health. Used by `/health/db`.
+Ejecuta `SELECT 1` para confirmar la salud de la base. Respalda `/health/db`.
 
 ### UserService (`src/services/users.py`)
-`register()` checks username uniqueness, hashes the incoming password, and inserts the record. No admin defaults are auto-created—real accounts must be registered through the API or scripts.
+`register()` comprueba si el `username` existe, hashea la contraseña recibida y crea la fila. No se autogeneran cuentas; todas deben registrarse vía API o scripts.
 
 ### DeviceService (`src/services/devices.py`)
-- `list_user_devices(username)` returns only the devices tied to that user, translating boolean status to `"on"/"off"` and exposing last-updated timestamps.
-- `add_device()` either creates a brand-new hardware row or reuses an existing one (matched by serial/name), then ensures the `account_devices` link exists and sets its status.
-- `update_status()` flips the smart device on/off but only after verifying the `(user, device)` relationship exists; otherwise it returns `404`.
-- `rename_device()` updates the friendly name as long as the caller owns the device and the new name is unique.
+- `list_user_devices(username)` devuelve solo los dispositivos asociados, normalizando el estado a "on"/"off" y exponiendo `last_updated`.
+- `add_device()` crea un hardware nuevo o reutiliza uno por serie/nombre, y asegura la relación en `account_devices` con el estado solicitado.
+- `update_status()` enciende/apaga solo si el usuario posee el dispositivo; si no, responde `404`.
+- `rename_device()` cambia el nombre amigable respetando propiedad y unicidad.
 
 ### DatabaseSeeder (`src/database/seeder.py`)
-- `reset_schema()` drops `account_devices`, `devices`, and `users`. Triggered automatically whenever `ENV=development`.
-- `seed_devices()`, `seed_users()`, `seed_account_devices()` only create tables; no fake rows are inserted so production data always originates from real events.
+- `reset_schema()` elimina `account_devices`, `devices` y `users`; se ejecuta automáticamente cuando `ENV=development`.
+- `seed_devices()`, `seed_users()` y `seed_account_devices()` únicamente crean las tablas; no insertan datos ficticios.
 
-## Request/Response Summary
+## Endpoints y Reglas
 
-| Method | Path | Purpose | Key Rules |
-|--------|------|---------|-----------|
-| GET | `/health` | Liveness probe. | Returns `{ "status": "ok" }`. |
-| GET | `/health/db` | Database readiness. | Executes `SELECT 1`; 500 on failure. |
-| POST | `/users/register` | Adds a new account. | Requires `{ name, username, password }`; password stored as bcrypt hash. |
-| GET | `/devices` | Lists user devices. | `username` query param; returns only devices linked via `account_devices`. |
-| POST | `/devices` | Adds or links a device. | Payload `{ username, device_name, serial_number, status? }`; prevents duplicate serials and maintains association row. |
-| POST | `/devices/status` | Toggles device power. | Payload `{ username, device_name, status }`; fails with 404 if user is not linked. |
-| PATCH | `/devices/name` | Renames a device. | Payload `{ username, current_name, new_name }`; ensures uniqueness and ownership. |
+| Método | Ruta | Propósito | Reglas clave |
+|--------|------|-----------|--------------|
+| GET | `/health` | Verifica que la API esté viva. | Devuelve `{ "status": "ok" }`. |
+| GET | `/health/db` | Comprueba conexión a PostgreSQL. | Ejecuta `SELECT 1`; responde 500 ante fallas. |
+| POST | `/users/register` | Registra un usuario nuevo. | Requiere `{ name, username, password }`; guarda password en bcrypt. |
+| GET | `/devices` | Lista los dispositivos de un usuario. | Parámetro `username`; solo devuelve asociaciones existentes. |
+| POST | `/devices` | Alta o asociación de dispositivo. | Payload `{ username, device_name, serial_number, status? }`; evita seriales duplicados. |
+| POST | `/devices/status` | Enciende/apaga un dispositivo. | Payload `{ username, device_name, status }`; falla con 404 si no hay vínculo. |
+| PATCH | `/devices/name` | Renombra el dispositivo. | Payload `{ username, current_name, new_name }`; exige propiedad y nombre único. |
 
-## Typical Lifecycle
-1. **Register** – Client calls `/users/register` to create an account.
-2. **Add device** – Client calls `/devices` with serial/name to register hardware against that account.
-3. **Control device** – Client toggles `/devices/status` as needed and optionally renames the device via `/devices/name`.
-4. **Monitoring** – `/devices` fetches the latest state; `/health` & `/health/db` feed monitoring dashboards.
+## Ciclo Típico
+1. **Registro** – Cliente llama a `/users/register` para crear cuenta.
+2. **Alta de dispositivo** – Cliente envía `/devices` con serie/nombre para vincular hardware.
+3. **Control** – Cliente usa `/devices/status` para encender/apagar y `/devices/name` para renombrar.
+4. **Monitoreo** – `/devices` muestra el estado actual; `/health` y `/health/db` alimentan dashboards.
 
-## Supporting Scripts & Components
-- `scripts/migrate.py` – CLI wrapper around the seeder. Useful in CI/CD to recreate the schema (`ENV`-aware) or to force a reset via `--reset` when not already in development mode.
-- `Dockerfile`/`docker-compose.yml` – Provide the runtime, binding the source tree into the container so the API always runs off the host files.
-- `requirements.txt` – Minimal dependency surface: FastAPI/Uvicorn, psycopg, passlib for bcrypt hashing.
+## Componentes de Apoyo
+- `scripts/migrate.py` – Ejecuta la lógica del seeder. Útil en CI/CD para recrear el esquema (respeta `ENV`) o forzar `--reset` cuando no estamos en development.
+- `Dockerfile` y `docker-compose.yml` – Definen la orquestación, montan el código del host en el contenedor y exponen el servicio en `8000`.
+- `requirements.txt` – Dependencias esenciales: FastAPI/Uvicorn, psycopg y passlib (bcrypt).
 
-## Security Considerations
-- Passwords are hashed with bcrypt (via `passlib`). There is no plaintext storage.
-- Device mutations always confirm user ownership in SQL, preventing one user from controlling another user’s device.
-- No default accounts or devices are injected; anything in the database was created through the API or explicit migrations.
+## Consideraciones de Seguridad
+- Las contraseñas se almacenan como hashes bcrypt; nunca se guardan en texto plano.
+- Cada operación sobre dispositivos valida en SQL que el usuario realmente posee ese equipo.
+- No se cargan cuentas ni dispositivos por defecto; cualquier dato existente proviene de acciones reales.
 
-## Observability Hooks
-- HTTP-level `/health` and database-level `/health/db` endpoints can be wired into container healthchecks or external monitors.
-- Uvicorn logs provide request traces, and startup logs warn if a new `.env` was auto-generated so operators can capture the generated secrets.
+## Observabilidad
+- `/health` y `/health/db` pueden usarse como healthchecks en Compose/Kubernetes.
+- Los logs de Uvicorn registran cada petición y el arranque advierte cuando se genera un `.env` nuevo para resguardar los secretos.
 
-## Extensibility Ideas
-- Add authentication tokens atop the existing user system.
-- Expand `DeviceService` with room/zone grouping or telemetry history tables.
-- Replace the simple seeder with a migration framework (Alembic/Flyway) once schema evolution becomes more complex.
+## Siguientes Pasos Posibles
+- Incorporar autenticación basada en tokens o sesiones.
+- Agrupar dispositivos por habitaciones/zona o registrar historial de telemetría.
+- Sustituir el seeder por un framework de migraciones (Alembic, Flyway) si el esquema crece en complejidad.
