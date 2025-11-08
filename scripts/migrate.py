@@ -24,7 +24,7 @@ def main() -> None:
 
     seeder = DatabaseSeeder()
 
-    if args.reset and env != "development":
+    if args.reset or env == "development":
         seeder.reset_schema()
 
     seeder.run_all()
