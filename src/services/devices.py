@@ -83,6 +83,69 @@ class DeviceService:
 
         return {"device": updated[0], "status": "renamed"}
 
+    def add_device(
+        self,
+        username: str,
+        device_name: str,
+        serial_number: str,
+        status: bool = False,
+    ) -> dict[str, str]:
+        with self._db.cursor() as cur:
+            cur.execute("SELECT id FROM users WHERE username = %s", (username,))
+            user_row = cur.fetchone()
+
+            if not user_row:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            user_id = int(user_row[0])
+
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO devices (name, serial_number)
+                    VALUES (%s, %s)
+                    RETURNING id, name;
+                    """,
+                    (device_name, serial_number),
+                )
+                device_id, persisted_name = cur.fetchone()
+            except psycopg.errors.UniqueViolation:
+                cur.execute(
+                    """
+                    SELECT id, name FROM devices
+                    WHERE serial_number = %s OR name = %s
+                    LIMIT 1;
+                    """,
+                    (serial_number, device_name),
+                )
+                existing_device = cur.fetchone()
+
+                if not existing_device:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Device already exists",
+                    )
+
+                device_id, persisted_name = existing_device
+
+            cur.execute(
+                """
+                INSERT INTO account_devices (device_id, user_id, status)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (device_id, user_id) DO UPDATE
+                    SET status = EXCLUDED.status,
+                        updated_at = NOW()
+                RETURNING status;
+                """,
+                (device_id, user_id, status),
+            )
+            device_status = cur.fetchone()
+
+        return {
+            "device": persisted_name,
+            "status": "on" if device_status and device_status[0] else "off",
+        }
+
     def _get_device_association(self, username: str, device_name: str) -> tuple[int, int]:
         with self._db.cursor() as cur:
             cur.execute(

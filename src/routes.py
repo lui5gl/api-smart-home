@@ -23,6 +23,13 @@ class DeviceRenamePayload(BaseModel):
     new_name: str
 
 
+class DeviceCreatePayload(BaseModel):
+    username: str
+    device_name: str
+    serial_number: str
+    status: bool | None = False
+
+
 @router.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
@@ -53,4 +60,14 @@ def rename_device(payload: DeviceRenamePayload) -> dict[str, str]:
         username=payload.username,
         current_name=payload.current_name,
         new_name=payload.new_name,
+    )
+
+
+@router.post("/devices")
+def add_device(payload: DeviceCreatePayload) -> dict[str, str]:
+    return device_service.add_device(
+        username=payload.username,
+        device_name=payload.device_name,
+        serial_number=payload.serial_number,
+        status=payload.status if payload.status is not None else False,
     )
