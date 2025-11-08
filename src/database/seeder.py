@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import os
 from typing import Iterable
 
-from ..security import hash_password
 from .database import Database
 
 
@@ -14,9 +12,6 @@ class DatabaseSeeder:
 
     def __init__(self, database: Database | None = None) -> None:
         self._db = database or Database()
-        self._admin_username = os.getenv("ADMIN_USERNAME", "admin")
-        self._admin_name = os.getenv("ADMIN_NAME", "Administrator")
-        self._admin_password = os.getenv("ADMIN_PASSWORD", "changeme")
 
     def _execute_statements(self, statements: Iterable[str]) -> None:
         with self._db.cursor() as cur:
@@ -38,15 +33,7 @@ class DatabaseSeeder:
 
         self._execute_statements(setup_statements)
 
-        with self._db.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO devices (name, serial_number)
-                VALUES (%s, %s)
-                ON CONFLICT (name) DO NOTHING;
-                """,
-                ("Thermostat", "THERMO-001"),
-            )
+        # No default device row inserted to avoid seeding fake data.
 
     def seed_users(self) -> None:
         setup_statements = [
@@ -65,19 +52,7 @@ class DatabaseSeeder:
 
         self._execute_statements(setup_statements)
 
-        with self._db.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO users (name, username, password, last_entry)
-                VALUES (%s, %s, %s, NOW())
-                ON CONFLICT (username) DO NOTHING;
-                """,
-                (
-                    self._admin_name,
-                    self._admin_username,
-                    hash_password(self._admin_password),
-                ),
-            )
+        # Do not insert default users in production environments.
 
     def run_all(self) -> dict[str, str]:
         self.seed_devices()
@@ -102,16 +77,4 @@ class DatabaseSeeder:
 
         self._execute_statements(setup_statements)
 
-        with self._db.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO account_devices (device_id, user_id, status)
-                VALUES (
-                    (SELECT id FROM devices WHERE name = %s),
-                    (SELECT id FROM users WHERE username = %s),
-                    %s
-                )
-                ON CONFLICT (device_id, user_id) DO NOTHING;
-                """,
-                ("Thermostat", self._admin_username, True),
-            )
+        # Associations are left for real user actions.
