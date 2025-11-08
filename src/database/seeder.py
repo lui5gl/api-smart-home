@@ -73,4 +73,36 @@ class DatabaseSeeder:
     def run_all(self) -> dict[str, str]:
         self.seed_devices()
         self.seed_users()
+        self.seed_account_devices()
         return {"status": "seeded"}
+
+    def seed_account_devices(self) -> None:
+        setup_statements = [
+            """
+            CREATE TABLE IF NOT EXISTS account_devices (
+                id SERIAL PRIMARY KEY,
+                device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                status BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (device_id, user_id)
+            );
+            """
+        ]
+
+        self._execute_statements(setup_statements)
+
+        with self._db.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO account_devices (device_id, user_id, status)
+                VALUES (
+                    (SELECT id FROM devices WHERE name = %s),
+                    (SELECT id FROM users WHERE username = %s),
+                    %s
+                )
+                ON CONFLICT (device_id, user_id) DO NOTHING;
+                """,
+                ("Thermostat", "admin", True),
+            )
