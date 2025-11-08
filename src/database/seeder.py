@@ -13,6 +13,15 @@ class DatabaseSeeder:
     def __init__(self, database: Database | None = None) -> None:
         self._db = database or Database()
 
+    def reset_schema(self) -> None:
+        """Drop all managed tables. Intended for development use."""
+        drop_statements = [
+            "DROP TABLE IF EXISTS account_devices CASCADE;",
+            "DROP TABLE IF EXISTS devices CASCADE;",
+            "DROP TABLE IF EXISTS users CASCADE;",
+        ]
+        self._execute_statements(drop_statements)
+
     def _execute_statements(self, statements: Iterable[str]) -> None:
         with self._db.cursor() as cur:
             for statement in statements:
