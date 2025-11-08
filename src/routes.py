@@ -9,7 +9,11 @@ router = APIRouter()
 health_service = HealthService()
 
 
+@router.get("/health")
+def health_check() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @router.get("/health/db")
 def database_health_check() -> dict[str, str]:
     return health_service.check_database()
-
