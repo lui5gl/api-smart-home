@@ -24,7 +24,9 @@ class DatabaseSeeder:
             CREATE TABLE IF NOT EXISTS devices (
                 id SERIAL PRIMARY KEY,
                 name TEXT UNIQUE NOT NULL,
-                status BOOLEAN NOT NULL DEFAULT FALSE
+                serial_number TEXT UNIQUE NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
             """
         ]
@@ -34,11 +36,11 @@ class DatabaseSeeder:
         with self._db.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO devices (name, status)
+                INSERT INTO devices (name, serial_number)
                 VALUES (%s, %s)
                 ON CONFLICT (name) DO NOTHING;
                 """,
-                ("Thermostat", True),
+                ("Thermostat", "THERMO-001"),
             )
 
     def seed_users(self) -> None:
