@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
 from fastapi import HTTPException
 
@@ -28,6 +29,21 @@ class DeviceService:
             rows = cur.fetchall()
 
         return [self._serialize_row(row) for row in rows]
+
+    def create_device_state(self, status: bool) -> dict[str, Any]:
+        device_uuid = uuid4()
+        with self._db.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO device_states (device_uuid, status)
+                VALUES (%s, %s)
+                RETURNING device_uuid, status, updated_at;
+                """,
+                (device_uuid, status),
+            )
+            row = cur.fetchone()
+
+        return self._serialize_row(row)
 
     def get_device_state(self, device_uuid: str) -> dict[str, Any]:
         with self._db.cursor() as cur:

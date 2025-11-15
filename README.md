@@ -5,9 +5,10 @@ Esta API quedó reducida al mínimo para cumplir el requisito del profesor: una 
 ## Flujo General
 1. **Arranque** – `ensure_env_file()` garantiza que exista `.env` e incluye `ALEXA_SKILL_TOKEN`, host y credenciales de PostgreSQL.  
 2. **Seeding** – `SeedService` ejecuta `DatabaseSeeder.run_all()` y crea la tabla `device_states`. Si ejecutes `scripts/migrate.py --reset` en desarrollo, la tabla se recrea.
-3. **Atención de solicitudes** – `src/routes.py` expone tres rutas protegidas con `X-Skill-Token`:
+3. **Atención de solicitudes** – `src/routes.py` expone rutas protegidas con `X-Skill-Token`:
    - `GET /devices` lista todos los dispositivos registrados (normalmente solo habrá uno).
    - `GET /devices/{device_uuid}` devuelve el estado de un dispositivo puntual.
+   - `POST /devices` crea un dispositivo nuevo generando el `UUID` automáticamente. Puedes enviar `{ "status": true }` para dejarlo encendido desde el inicio.
    - `POST /devices/state` recibe `{ device_uuid, status }` y guarda el estado (inserta o actualiza según exista).
 
 Adicionalmente se mantienen `GET /health` y `GET /health/db` para monitoreo.
@@ -31,6 +32,12 @@ curl -H "X-Skill-Token: <TOKEN>" http://localhost:8000/devices
 
 # Consultar un UUID específico
 curl -H "X-Skill-Token: <TOKEN>" http://localhost:8000/devices/<UUID>
+
+# Crear un dispositivo nuevo (la API genera el UUID)
+curl -X POST http://localhost:8000/devices \
+     -H "Content-Type: application/json" \
+     -H "X-Skill-Token: <TOKEN>" \
+     -d '{"status": true}'
 
 # Actualizar el estado (enciende la casa completa)
 curl -X POST http://localhost:8000/devices/state \

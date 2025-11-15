@@ -20,6 +20,10 @@ class DeviceStatePayload(BaseModel):
     status: bool
 
 
+class DeviceCreatePayload(BaseModel):
+    status: bool | None = False
+
+
 @router.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
@@ -38,6 +42,12 @@ def list_device_states() -> list[dict[str, Any]]:
 @router.get("/devices/{device_uuid}", dependencies=[skill_token_dependency])
 def get_device_state(device_uuid: str) -> dict[str, Any]:
     return device_service.get_device_state(device_uuid)
+
+
+@router.post("/devices", dependencies=[skill_token_dependency])
+def create_device_state(payload: DeviceCreatePayload | None = None) -> dict[str, Any]:
+    desired_status = payload.status if payload and payload.status is not None else False
+    return device_service.create_device_state(desired_status)
 
 
 @router.post("/devices/state", dependencies=[skill_token_dependency])
