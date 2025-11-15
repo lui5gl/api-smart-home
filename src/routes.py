@@ -23,18 +23,18 @@ def health_check() -> dict[str, str]:
 
 
 @router.get("/device-status", dependencies=[skill_token_dependency])
-def get_device_state() -> dict[str, str]:
+def get_device_state() -> dict[str, str | None]:
     """Retrieve the current device state."""
     return device_service.get_state()
 
 
 @router.post("/device-status", dependencies=[skill_token_dependency])
-def set_device_state(payload: DeviceStatePayload) -> dict[str, str]:
+def set_device_state(payload: DeviceStatePayload) -> dict[str, str | None]:
     """Force the device into a specific state."""
     return device_service.set_state(status=payload.status)
 
 
 @router.post("/device-status/toggle", dependencies=[skill_token_dependency])
-def toggle_device_state() -> dict[str, str]:
+def toggle_device_state() -> dict[str, str | None]:
     """Toggle the device state without providing a value."""
     return device_service.toggle_state()
