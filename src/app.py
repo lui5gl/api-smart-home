@@ -4,7 +4,6 @@ from fastapi import FastAPI
 
 from .config import ensure_env_file
 from .routes import router
-from .services import SeedService
 
 
 env_creation = ensure_env_file()
@@ -17,12 +16,4 @@ if env_creation.get("created"):
 
 
 app = FastAPI(title="Smart Home API")
-seed_service = SeedService()
-
-
-@app.on_event("startup")
-def seed_database() -> None:
-    seed_service.seed_database()
-
-
 app.include_router(router)

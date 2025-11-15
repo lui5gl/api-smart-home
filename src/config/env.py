@@ -21,14 +21,7 @@ def ensure_env_file(env_path: str | Path | None = None) -> Dict[str, str | bool]
 
     secrets_map = {
         "ENV": "production",
-        "POSTGRES_HOST": "smart-home-db",
-        "POSTGRES_PORT": "5432",
-        "POSTGRES_DB": "smart_home",
-        "POSTGRES_USER": "postgres",
-        "POSTGRES_PASSWORD": _generate_secret(),
-        "ADMIN_NAME": "Administrator",
-        "ADMIN_USERNAME": "admin",
-        "ADMIN_PASSWORD": _generate_secret(),
+        "STATE_FILE_PATH": str(project_root / "device_state.json"),
         "ALEXA_SKILL_TOKEN": _generate_secret(),
     }
 
@@ -40,10 +33,10 @@ def ensure_env_file(env_path: str | Path | None = None) -> Dict[str, str | bool]
     return {
         "created": True,
         "path": str(target_path),
-        "admin_password": secrets_map["ADMIN_PASSWORD"],
-        "postgres_password": secrets_map["POSTGRES_PASSWORD"],
+        "state_file": secrets_map["STATE_FILE_PATH"],
     }
 
 
 def _generate_secret() -> str:
     return secrets.token_urlsafe(24)
+
