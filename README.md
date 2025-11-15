@@ -8,8 +8,10 @@ Esta API quedó reducida al mínimo para cumplir el requisito del profesor: una 
 3. **Atención de solicitudes** – `src/routes.py` expone rutas protegidas con `X-Skill-Token`:
    - `GET /devices` lista todos los dispositivos registrados (normalmente solo habrá uno).
    - `GET /devices/{device_uuid}` devuelve el estado de un dispositivo puntual.
+   - `GET /device-status?device_uuid=...` también devuelve el estado, pero usando query parameter (útil para clientes que no manejan path params).
    - `POST /devices` crea un dispositivo nuevo generando el `UUID` automáticamente. Puedes enviar `{ "status": true }` para dejarlo encendido desde el inicio.
    - `POST /devices/state` recibe `{ device_uuid, status }` y guarda el estado (inserta o actualiza según exista).
+   - `POST /devices/toggle` recibe `{ device_uuid }` y alterna el estado actual (on/off) sin enviar un valor explícito.
 
 Adicionalmente se mantienen `GET /health` y `GET /health/db` para monitoreo.
 
@@ -33,6 +35,9 @@ curl -H "X-Skill-Token: <TOKEN>" http://localhost:8000/devices
 # Consultar un UUID específico
 curl -H "X-Skill-Token: <TOKEN>" http://localhost:8000/devices/<UUID>
 
+# O usando query param
+curl -H "X-Skill-Token: <TOKEN>" "http://localhost:8000/device-status?device_uuid=<UUID>"
+
 # Crear un dispositivo nuevo (la API genera el UUID)
 curl -X POST http://localhost:8000/devices \
      -H "Content-Type: application/json" \
@@ -44,6 +49,12 @@ curl -X POST http://localhost:8000/devices/state \
      -H "Content-Type: application/json" \
      -H "X-Skill-Token: <TOKEN>" \
      -d '{"device_uuid": "<UUID>", "status": true}'
+
+# Alternar el estado sin saber si está on/off
+curl -X POST http://localhost:8000/devices/toggle \
+     -H "Content-Type: application/json" \
+     -H "X-Skill-Token: <TOKEN>" \
+     -d '{"device_uuid": "<UUID>"}'
 ```
 
 Las respuestas devuelven:

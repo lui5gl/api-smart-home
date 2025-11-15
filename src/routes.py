@@ -20,6 +20,10 @@ class DeviceStatePayload(BaseModel):
     status: bool
 
 
+class DeviceTogglePayload(BaseModel):
+    device_uuid: str
+
+
 class DeviceCreatePayload(BaseModel):
     status: bool | None = False
 
@@ -39,6 +43,11 @@ def list_device_states() -> list[dict[str, Any]]:
     return device_service.list_device_states()
 
 
+@router.get("/device-status", dependencies=[skill_token_dependency])
+def get_device_state_query(device_uuid: str) -> dict[str, Any]:
+    return device_service.get_device_state(device_uuid)
+
+
 @router.get("/devices/{device_uuid}", dependencies=[skill_token_dependency])
 def get_device_state(device_uuid: str) -> dict[str, Any]:
     return device_service.get_device_state(device_uuid)
@@ -56,3 +65,8 @@ def set_device_state(payload: DeviceStatePayload) -> dict[str, Any]:
         device_uuid=payload.device_uuid,
         status=payload.status,
     )
+
+
+@router.post("/devices/toggle", dependencies=[skill_token_dependency])
+def toggle_device_state(payload: DeviceTogglePayload) -> dict[str, Any]:
+    return device_service.toggle_device_state(payload.device_uuid)

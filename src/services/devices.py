@@ -62,6 +62,24 @@ class DeviceService:
 
         return self._serialize_row(row)
 
+    def toggle_device_state(self, device_uuid: str) -> dict[str, Any]:
+        with self._db.cursor() as cur:
+            cur.execute(
+                """
+                SELECT status
+                FROM device_states
+                WHERE device_uuid = %s;
+                """,
+                (device_uuid,),
+            )
+            row = cur.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Device not registered")
+
+        current_status = bool(row[0])
+        return self.set_device_state(device_uuid=device_uuid, status=not current_status)
+
     def set_device_state(self, device_uuid: str, status: bool) -> dict[str, Any]:
         with self._db.cursor() as cur:
             cur.execute(
