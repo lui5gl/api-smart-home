@@ -58,8 +58,16 @@ class DatabaseSeeder:
             ALTER COLUMN device_uuid SET NOT NULL;
             """,
             """
-            ALTER TABLE devices
-            ADD CONSTRAINT IF NOT EXISTS uq_devices_device_uuid UNIQUE (device_uuid);
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'uq_devices_device_uuid'
+                ) THEN
+                    ALTER TABLE devices
+                    ADD CONSTRAINT uq_devices_device_uuid UNIQUE (device_uuid);
+                END IF;
+            END;
+            $$;
             """,
         ]
 
