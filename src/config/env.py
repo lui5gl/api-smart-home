@@ -22,7 +22,6 @@ def ensure_env_file(env_path: str | Path | None = None) -> Dict[str, str | bool]
     secrets_map = {
         "ENV": "production",
         "STATE_FILE_PATH": str(project_root / "device_state.json"),
-        "ALEXA_SKILL_TOKEN": _generate_secret(),
     }
 
     lines = ["# Auto-generated configuration\n"]
@@ -39,4 +38,3 @@ def ensure_env_file(env_path: str | Path | None = None) -> Dict[str, str | bool]
 
 def _generate_secret() -> str:
     return secrets.token_urlsafe(24)
-

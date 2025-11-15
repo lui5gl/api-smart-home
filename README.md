@@ -1,6 +1,6 @@
 # Smart Home Skill Hook
 
-La API quedó reducida al mínimo: Alexa (o un Arduino) envía un token secreto y controla un único estado (`on/off`) que se persiste en un archivo JSON (`STATE_FILE_PATH`). No hay base de datos ni múltiples dispositivos.
+La API quedó reducida al mínimo: Alexa (o un Arduino) controla un único estado (`on/off`) que se persiste en un archivo JSON (`STATE_FILE_PATH`). No hay base de datos ni múltiples dispositivos.
 
 ## Flujo General
 1. **Arranque** – `ensure_env_file()` crea `.env` con `ALEXA_SKILL_TOKEN` y `STATE_FILE_PATH`.  
@@ -12,9 +12,7 @@ La API quedó reducida al mínimo: Alexa (o un Arduino) envía un token secreto 
 4. `GET /health` sigue disponible para verificar que el servicio esté arriba.
 
 ## Seguridad para la Skill/Arduino
-1. Copia `ALEXA_SKILL_TOKEN` del `.env` y configúralo en tu Skill/firmware.  
-2. Cada request a `/device-status` o `/device-status/toggle` debe incluir `X-Skill-Token: <valor>`; si falta, responde `401`.  
-3. Para rotar el secreto o mover el archivo, edita `.env`, reinicia el contenedor y vuelve a distribuir la configuración en la Skill/Arduino.
+Solo necesitas apuntar las solicitudes HTTP a tu instancia (no hay headers de autenticación). Si cambias `STATE_FILE_PATH`, asegúrate de que la ruta sea accesible para el proceso.
 
 ## Ejemplos
 
@@ -23,17 +21,15 @@ La API quedó reducida al mínimo: Alexa (o un Arduino) envía un token secreto 
 curl http://localhost/health
 
 # Consultar estado
-curl -H "X-Skill-Token: <TOKEN>" http://localhost/device-status
+curl http://localhost/device-status
 
 # Fijar estado explícito
 curl -X POST http://localhost/device-status \
      -H "Content-Type: application/json" \
-     -H "X-Skill-Token: <TOKEN>" \
      -d '{"status": true}'
 
 # Alternar sin payload
-curl -X POST http://localhost/device-status/toggle \
-     -H "X-Skill-Token: <TOKEN>"
+curl -X POST http://localhost/device-status/toggle
 ```
 
 Respuesta típica:
