@@ -20,19 +20,19 @@ La API quedó reducida al mínimo: Alexa (o un Arduino) envía un token secreto 
 
 ```bash
 # Healthcheck
-curl http://localhost:8000/health
+curl http://localhost/health
 
 # Consultar estado
-curl -H "X-Skill-Token: <TOKEN>" http://localhost:8000/device-status
+curl -H "X-Skill-Token: <TOKEN>" http://localhost/device-status
 
 # Fijar estado explícito
-curl -X POST http://localhost:8000/device-status \
+curl -X POST http://localhost/device-status \
      -H "Content-Type: application/json" \
      -H "X-Skill-Token: <TOKEN>" \
      -d '{"status": true}'
 
 # Alternar sin payload
-curl -X POST http://localhost:8000/device-status/toggle \
+curl -X POST http://localhost/device-status/toggle \
      -H "X-Skill-Token: <TOKEN>"
 ```
 
