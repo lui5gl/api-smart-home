@@ -5,7 +5,8 @@ Esta API quedó reducida al mínimo para cumplir el requisito del profesor: una 
 ## Flujo General
 1. **Arranque** – `ensure_env_file()` garantiza que exista `.env` e incluye `ALEXA_SKILL_TOKEN`, host y credenciales de PostgreSQL.  
 2. **Seeding** – `SeedService` ejecuta `DatabaseSeeder.run_all()` y crea la tabla `device_states`. Si ejecutes `scripts/migrate.py --reset` en desarrollo, la tabla se recrea.
-3. **Atención de solicitudes** – `src/routes.py` expone rutas protegidas con `X-Skill-Token`:
+3. **Base de datos automática** – si `POSTGRES_DB` no existe, el backend abre una conexión al `postgres` por defecto y la crea antes de continuar.
+4. **Atención de solicitudes** – `src/routes.py` expone rutas protegidas con `X-Skill-Token`:
    - `GET /devices` lista todos los dispositivos registrados (normalmente solo habrá uno).
    - `GET /devices/{device_uuid}` devuelve el estado de un dispositivo puntual.
    - `GET /device-status?device_uuid=...` también devuelve el estado, pero usando query parameter (útil para clientes que no manejan path params).
