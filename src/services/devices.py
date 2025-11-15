@@ -1,203 +1,76 @@
-"""Business logic for interacting with smart devices."""
+"""Business logic for the Alexa-triggered device state."""
+
+from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
 
-import psycopg
 from fastapi import HTTPException
 
 from ..database import Database
 
 
 class DeviceService:
-    """Provide helpers to mutate device state for a specific account."""
+    """Store and toggle smart-home device state keyed by UUID."""
 
     def __init__(self, database: Database | None = None) -> None:
         self._db = database or Database()
 
-    def update_status(self, username: str, device_uuid: str, status: bool) -> dict[str, str]:
-        account_device_id, _, device_name = self._get_device_association(username, device_uuid)
-
+    def list_device_states(self) -> list[dict[str, Any]]:
         with self._db.cursor() as cur:
             cur.execute(
                 """
-                UPDATE account_devices
-                SET status = %s, updated_at = NOW()
-                WHERE id = %s
-                RETURNING status;
-                """,
-                (status, account_device_id),
-            )
-            updated_status = cur.fetchone()
-
-        state = "on" if updated_status and updated_status[0] else "off"
-        return {"device_uuid": device_uuid, "device_name": device_name, "status": state}
-
-    def list_user_devices(self, username: str) -> list[dict[str, Any]]:
-        with self._db.cursor() as cur:
-            cur.execute(
+                SELECT device_uuid, status, updated_at
+                FROM device_states
+                ORDER BY updated_at DESC;
                 """
-                SELECT d.device_uuid, d.name, d.serial_number, ad.status, ad.updated_at
-                FROM account_devices ad
-                JOIN users u ON ad.user_id = u.id
-                JOIN devices d ON ad.device_id = d.id
-                WHERE u.username = %s
-                ORDER BY d.name;
-                """,
-                (username,),
             )
             rows = cur.fetchall()
 
-        devices: list[dict[str, Any]] = []
-        for device_uuid, name, serial_number, status, updated_at in rows:
-            devices.append(
-                {
-                    "uuid": str(device_uuid) if device_uuid else None,
-                    "name": name,
-                    "serial_number": serial_number,
-                    "status": "on" if status else "off",
-                    "last_updated": self._format_datetime(updated_at),
-                }
-            )
+        return [self._serialize_row(row) for row in rows]
 
-        return devices
-
-    def get_device_status(self, username: str, device_uuid: str) -> dict[str, Any]:
+    def get_device_state(self, device_uuid: str) -> dict[str, Any]:
         with self._db.cursor() as cur:
             cur.execute(
                 """
-                SELECT d.device_uuid, d.name, d.serial_number, ad.status, ad.updated_at
-                FROM account_devices ad
-                JOIN users u ON ad.user_id = u.id
-                JOIN devices d ON ad.device_id = d.id
-                WHERE u.username = %s AND d.device_uuid = %s;
+                SELECT device_uuid, status, updated_at
+                FROM device_states
+                WHERE device_uuid = %s;
                 """,
-                (username, device_uuid),
+                (device_uuid,),
             )
             row = cur.fetchone()
 
         if not row:
-            raise HTTPException(
-                status_code=404,
-                detail="Device not associated with this account",
-            )
+            raise HTTPException(status_code=404, detail="Device not registered")
 
-        device_uuid, name, serial_number, status, updated_at = row
-        return {
-            "uuid": str(device_uuid) if device_uuid else None,
-            "name": name,
-            "serial_number": serial_number,
-            "status": "on" if status else "off",
-            "last_updated": self._format_datetime(updated_at),
-        }
+        return self._serialize_row(row)
 
-    def rename_device(self, username: str, device_uuid: str, new_name: str) -> dict[str, str]:
-        _, device_id, _ = self._get_device_association(username, device_uuid)
-
+    def set_device_state(self, device_uuid: str, status: bool) -> dict[str, Any]:
         with self._db.cursor() as cur:
-            try:
-                cur.execute(
-                    """
-                    UPDATE devices
-                    SET name = %s, updated_at = NOW()
-                    WHERE id = %s
-                    RETURNING name;
-                    """,
-                    (new_name, device_id),
-                )
-                updated = cur.fetchone()
-            except psycopg.errors.UniqueViolation as exc:
-                raise HTTPException(
-                    status_code=400, detail="Device name already in use"
-                ) from exc
-
-        return {"device": updated[0], "status": "renamed"}
-
-    def add_device(
-        self,
-        username: str,
-        device_name: str,
-        serial_number: str,
-        status: bool = False,
-    ) -> dict[str, str]:
-        with self._db.cursor() as cur:
-            cur.execute("SELECT id FROM users WHERE username = %s", (username,))
-            user_row = cur.fetchone()
-
-            if not user_row:
-                raise HTTPException(status_code=404, detail="User not found")
-
-            user_id = int(user_row[0])
-
-            try:
-                cur.execute(
-                    """
-                    INSERT INTO devices (name, serial_number)
-                    VALUES (%s, %s)
-                    RETURNING id, name, device_uuid;
-                    """,
-                    (device_name, serial_number),
-                )
-                device_id, persisted_name, device_uuid = cur.fetchone()
-            except psycopg.errors.UniqueViolation:
-                cur.execute(
-                    """
-                    SELECT id, name, device_uuid FROM devices
-                    WHERE serial_number = %s OR name = %s
-                    LIMIT 1;
-                    """,
-                    (serial_number, device_name),
-                )
-                existing_device = cur.fetchone()
-
-                if not existing_device:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Device already exists",
-                    )
-
-                device_id, persisted_name, device_uuid = existing_device
-
             cur.execute(
                 """
-                INSERT INTO account_devices (device_id, user_id, status)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (device_id, user_id) DO UPDATE
+                INSERT INTO device_states (device_uuid, status)
+                VALUES (%s, %s)
+                ON CONFLICT (device_uuid) DO UPDATE
                     SET status = EXCLUDED.status,
                         updated_at = NOW()
-                RETURNING status;
+                RETURNING device_uuid, status, updated_at;
                 """,
-                (device_id, user_id, status),
+                (device_uuid, status),
             )
-            device_status = cur.fetchone()
+            row = cur.fetchone()
 
+        return self._serialize_row(row)
+
+    @staticmethod
+    def _serialize_row(row: tuple[Any, ...]) -> dict[str, Any]:
+        device_uuid, status, updated_at = row
         return {
-            "device": persisted_name,
-            "uuid": str(device_uuid) if device_uuid else None,
-            "status": "on" if device_status and device_status[0] else "off",
+            "device_uuid": str(device_uuid),
+            "status": "on" if status else "off",
+            "last_updated": DeviceService._format_datetime(updated_at),
         }
-
-    def _get_device_association(self, username: str, device_uuid: str) -> tuple[int, int, str]:
-        with self._db.cursor() as cur:
-            cur.execute(
-                """
-                SELECT ad.id, d.id, d.name
-                FROM account_devices ad
-                JOIN users u ON ad.user_id = u.id
-                JOIN devices d ON ad.device_id = d.id
-                WHERE u.username = %s AND d.device_uuid = %s;
-                """,
-                (username, device_uuid),
-            )
-            result = cur.fetchone()
-
-        if not result:
-            raise HTTPException(
-                status_code=404,
-                detail="Device not associated with this account",
-            )
-
-        return int(result[0]), int(result[1]), str(result[2])
 
     @staticmethod
     def _format_datetime(value: Any) -> str | None:
