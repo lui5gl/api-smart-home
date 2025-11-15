@@ -29,15 +29,38 @@ class DatabaseSeeder:
 
     def seed_devices(self) -> None:
         setup_statements = [
+            'CREATE EXTENSION IF NOT EXISTS "pgcrypto";',
             """
             CREATE TABLE IF NOT EXISTS devices (
                 id SERIAL PRIMARY KEY,
+                device_uuid UUID NOT NULL DEFAULT gen_random_uuid(),
                 name TEXT UNIQUE NOT NULL,
                 serial_number TEXT UNIQUE NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
+            """,
             """
+            ALTER TABLE devices
+            ADD COLUMN IF NOT EXISTS device_uuid UUID;
+            """,
+            """
+            UPDATE devices
+            SET device_uuid = gen_random_uuid()
+            WHERE device_uuid IS NULL;
+            """,
+            """
+            ALTER TABLE devices
+            ALTER COLUMN device_uuid SET DEFAULT gen_random_uuid();
+            """,
+            """
+            ALTER TABLE devices
+            ALTER COLUMN device_uuid SET NOT NULL;
+            """,
+            """
+            ALTER TABLE devices
+            ADD CONSTRAINT IF NOT EXISTS uq_devices_device_uuid UNIQUE (device_uuid);
+            """,
         ]
 
         self._execute_statements(setup_statements)

@@ -9,7 +9,7 @@ Este backend coordina tres piezas: cuentas de usuario, dispositivos inteligentes
 
 ## Modelo de Datos
 - **users** – Cuenta de usuario con `name`, `username` único y `password` en bcrypt. Campos `last_entry`, `created_at` y `updated_at` guardan auditoría.
-- **devices** – Dispositivo físico con `name` (alias amigable), `serial_number` único y marcas de tiempo.
+- **devices** – Dispositivo físico con `device_uuid` (identificador estable), `name` (alias amigable), `serial_number` único y marcas de tiempo.
 - **account_devices** – Tabla puente que une usuarios y dispositivos, añade `status` (`on/off`) y obliga a unicidad `(device_id, user_id)` para validar propiedad.
 
 ## Servicios Principales
@@ -36,8 +36,8 @@ Ejecuta `SELECT 1` para confirmar la salud de la base. Respalda `/health/db`.
 | GET | `/health` | Verifica que la API esté viva. | Devuelve `{ "status": "ok" }`. |
 | GET | `/health/db` | Comprueba conexión a PostgreSQL. | Ejecuta `SELECT 1`; responde 500 ante fallas. |
 | POST | `/users/register` | Registra un usuario nuevo. | Requiere `{ name, username, password }`; guarda password en bcrypt. |
-| GET | `/devices` | Lista los dispositivos de un usuario. | Parámetro `username`; solo devuelve asociaciones existentes; requiere `X-Skill-Token`. |
-| GET | `/devices/status` | Consulta el estado de un dispositivo puntual. | Parámetros `username` y `device_name`; responde 404 si no están asociados; requiere `X-Skill-Token`. |
+| GET | `/devices` | Lista los dispositivos de un usuario. | Parámetro `username`; retorna `{ uuid, name, serial_number, status, last_updated }` por cada uno; requiere `X-Skill-Token`. |
+| GET | `/devices/status` | Consulta el estado de un dispositivo puntual. | Parámetros `username` y `device_uuid`; devuelve el mismo payload `{ uuid, name, serial_number, status, last_updated }`; responde 404 si no están asociados; requiere `X-Skill-Token`. |
 | POST | `/devices` | Alta o asociación de dispositivo. | Payload `{ username, device_name, serial_number, status? }`; evita seriales duplicados; requiere `X-Skill-Token`. |
 | POST | `/devices/status` | Enciende/apaga un dispositivo. | Payload `{ username, device_name, status }`; falla con 404 si no hay vínculo; requiere `X-Skill-Token`. |
 | PATCH | `/devices/name` | Renombra el dispositivo. | Payload `{ username, current_name, new_name }`; exige propiedad y nombre único; requiere `X-Skill-Token`. |

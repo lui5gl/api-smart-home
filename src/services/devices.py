@@ -37,7 +37,7 @@ class DeviceService:
         with self._db.cursor() as cur:
             cur.execute(
                 """
-                SELECT d.name, d.serial_number, ad.status, ad.updated_at
+                SELECT d.device_uuid, d.name, d.serial_number, ad.status, ad.updated_at
                 FROM account_devices ad
                 JOIN users u ON ad.user_id = u.id
                 JOIN devices d ON ad.device_id = d.id
@@ -49,9 +49,10 @@ class DeviceService:
             rows = cur.fetchall()
 
         devices: list[dict[str, Any]] = []
-        for name, serial_number, status, updated_at in rows:
+        for device_uuid, name, serial_number, status, updated_at in rows:
             devices.append(
                 {
+                    "uuid": str(device_uuid) if device_uuid else None,
                     "name": name,
                     "serial_number": serial_number,
                     "status": "on" if status else "off",
@@ -61,17 +62,17 @@ class DeviceService:
 
         return devices
 
-    def get_device_status(self, username: str, device_name: str) -> dict[str, Any]:
+    def get_device_status(self, username: str, device_uuid: str) -> dict[str, Any]:
         with self._db.cursor() as cur:
             cur.execute(
                 """
-                SELECT d.name, d.serial_number, ad.status, ad.updated_at
+                SELECT d.device_uuid, d.name, d.serial_number, ad.status, ad.updated_at
                 FROM account_devices ad
                 JOIN users u ON ad.user_id = u.id
                 JOIN devices d ON ad.device_id = d.id
-                WHERE u.username = %s AND d.name = %s;
+                WHERE u.username = %s AND d.device_uuid = %s;
                 """,
-                (username, device_name),
+                (username, device_uuid),
             )
             row = cur.fetchone()
 
@@ -81,8 +82,9 @@ class DeviceService:
                 detail="Device not associated with this account",
             )
 
-        name, serial_number, status, updated_at = row
+        device_uuid, name, serial_number, status, updated_at = row
         return {
+            "uuid": str(device_uuid) if device_uuid else None,
             "name": name,
             "serial_number": serial_number,
             "status": "on" if status else "off",
@@ -132,15 +134,15 @@ class DeviceService:
                     """
                     INSERT INTO devices (name, serial_number)
                     VALUES (%s, %s)
-                    RETURNING id, name;
+                    RETURNING id, name, device_uuid;
                     """,
                     (device_name, serial_number),
                 )
-                device_id, persisted_name = cur.fetchone()
+                device_id, persisted_name, device_uuid = cur.fetchone()
             except psycopg.errors.UniqueViolation:
                 cur.execute(
                     """
-                    SELECT id, name FROM devices
+                    SELECT id, name, device_uuid FROM devices
                     WHERE serial_number = %s OR name = %s
                     LIMIT 1;
                     """,
@@ -154,7 +156,7 @@ class DeviceService:
                         detail="Device already exists",
                     )
 
-                device_id, persisted_name = existing_device
+                device_id, persisted_name, device_uuid = existing_device
 
             cur.execute(
                 """
@@ -171,6 +173,7 @@ class DeviceService:
 
         return {
             "device": persisted_name,
+            "uuid": str(device_uuid) if device_uuid else None,
             "status": "on" if device_status and device_status[0] else "off",
         }
 

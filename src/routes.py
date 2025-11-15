@@ -1,5 +1,7 @@
 """API route definitions for the Smart Home service."""
 
+from typing import Any
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
@@ -50,13 +52,13 @@ def database_health_check() -> dict[str, str]:
 
 
 @router.get("/devices", dependencies=[skill_token_dependency])
-def list_user_devices(username: str) -> list[dict[str, str]]:
+def list_user_devices(username: str) -> list[dict[str, Any]]:
     return device_service.list_user_devices(username)
 
 
 @router.get("/devices/status", dependencies=[skill_token_dependency])
-def get_device_status(username: str, device_name: str) -> dict[str, str]:
-    return device_service.get_device_status(username, device_name)
+def get_device_status(username: str, device_uuid: str) -> dict[str, Any]:
+    return device_service.get_device_status(username, device_uuid)
 
 
 @router.post("/devices/status", dependencies=[skill_token_dependency])
