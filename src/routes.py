@@ -18,13 +18,13 @@ skill_token_dependency = Depends(require_skill_token)
 
 class DeviceStatusPayload(BaseModel):
     username: str
-    device_name: str
+    device_uuid: str
     status: bool
 
 
 class DeviceRenamePayload(BaseModel):
     username: str
-    current_name: str
+    device_uuid: str
     new_name: str
 
 
@@ -65,7 +65,7 @@ def get_device_status(username: str, device_uuid: str) -> dict[str, Any]:
 def update_device_status(payload: DeviceStatusPayload) -> dict[str, str]:
     return device_service.update_status(
         username=payload.username,
-        device_name=payload.device_name,
+        device_uuid=payload.device_uuid,
         status=payload.status,
     )
 
@@ -74,7 +74,7 @@ def update_device_status(payload: DeviceStatusPayload) -> dict[str, str]:
 def rename_device(payload: DeviceRenamePayload) -> dict[str, str]:
     return device_service.rename_device(
         username=payload.username,
-        current_name=payload.current_name,
+        device_uuid=payload.device_uuid,
         new_name=payload.new_name,
     )
 

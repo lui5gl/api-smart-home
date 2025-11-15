@@ -39,8 +39,8 @@ Ejecuta `SELECT 1` para confirmar la salud de la base. Respalda `/health/db`.
 | GET | `/devices` | Lista los dispositivos de un usuario. | Parámetro `username`; retorna `{ uuid, name, serial_number, status, last_updated }` por cada uno; requiere `X-Skill-Token`. |
 | GET | `/devices/status` | Consulta el estado de un dispositivo puntual. | Parámetros `username` y `device_uuid`; devuelve el mismo payload `{ uuid, name, serial_number, status, last_updated }`; responde 404 si no están asociados; requiere `X-Skill-Token`. |
 | POST | `/devices` | Alta o asociación de dispositivo. | Payload `{ username, device_name, serial_number, status? }`; evita seriales duplicados; requiere `X-Skill-Token`. |
-| POST | `/devices/status` | Enciende/apaga un dispositivo. | Payload `{ username, device_name, status }`; falla con 404 si no hay vínculo; requiere `X-Skill-Token`. |
-| PATCH | `/devices/name` | Renombra el dispositivo. | Payload `{ username, current_name, new_name }`; exige propiedad y nombre único; requiere `X-Skill-Token`. |
+| POST | `/devices/status` | Enciende/apaga un dispositivo. | Payload `{ username, device_uuid, status }`; falla con 404 si no hay vínculo; requiere `X-Skill-Token`. |
+| PATCH | `/devices/name` | Renombra el dispositivo. | Payload `{ username, device_uuid, new_name }`; exige propiedad y nombre único; requiere `X-Skill-Token`. |
 
 ## Ciclo Típico
 1. **Registro** – Cliente llama a `/users/register` para crear cuenta.

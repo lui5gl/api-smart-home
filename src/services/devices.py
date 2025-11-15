@@ -15,8 +15,8 @@ class DeviceService:
     def __init__(self, database: Database | None = None) -> None:
         self._db = database or Database()
 
-    def update_status(self, username: str, device_name: str, status: bool) -> dict[str, str]:
-        account_device_id, _ = self._get_device_association(username, device_name)
+    def update_status(self, username: str, device_uuid: str, status: bool) -> dict[str, str]:
+        account_device_id, _, device_name = self._get_device_association(username, device_uuid)
 
         with self._db.cursor() as cur:
             cur.execute(
@@ -31,7 +31,7 @@ class DeviceService:
             updated_status = cur.fetchone()
 
         state = "on" if updated_status and updated_status[0] else "off"
-        return {"device": device_name, "status": state}
+        return {"device_uuid": device_uuid, "device_name": device_name, "status": state}
 
     def list_user_devices(self, username: str) -> list[dict[str, Any]]:
         with self._db.cursor() as cur:
@@ -91,8 +91,8 @@ class DeviceService:
             "last_updated": self._format_datetime(updated_at),
         }
 
-    def rename_device(self, username: str, current_name: str, new_name: str) -> dict[str, str]:
-        _, device_id = self._get_device_association(username, current_name)
+    def rename_device(self, username: str, device_uuid: str, new_name: str) -> dict[str, str]:
+        _, device_id, _ = self._get_device_association(username, device_uuid)
 
         with self._db.cursor() as cur:
             try:
@@ -177,17 +177,17 @@ class DeviceService:
             "status": "on" if device_status and device_status[0] else "off",
         }
 
-    def _get_device_association(self, username: str, device_name: str) -> tuple[int, int]:
+    def _get_device_association(self, username: str, device_uuid: str) -> tuple[int, int, str]:
         with self._db.cursor() as cur:
             cur.execute(
                 """
-                SELECT ad.id, d.id
+                SELECT ad.id, d.id, d.name
                 FROM account_devices ad
                 JOIN users u ON ad.user_id = u.id
                 JOIN devices d ON ad.device_id = d.id
-                WHERE u.username = %s AND d.name = %s;
+                WHERE u.username = %s AND d.device_uuid = %s;
                 """,
-                (username, device_name),
+                (username, device_uuid),
             )
             result = cur.fetchone()
 
@@ -197,7 +197,7 @@ class DeviceService:
                 detail="Device not associated with this account",
             )
 
-        return int(result[0]), int(result[1])
+        return int(result[0]), int(result[1]), str(result[2])
 
     @staticmethod
     def _format_datetime(value: Any) -> str | None:
