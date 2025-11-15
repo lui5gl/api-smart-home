@@ -54,6 +54,11 @@ def list_user_devices(username: str) -> list[dict[str, str]]:
     return device_service.list_user_devices(username)
 
 
+@router.get("/devices/status", dependencies=[skill_token_dependency])
+def get_device_status(username: str, device_name: str) -> dict[str, str]:
+    return device_service.get_device_status(username, device_name)
+
+
 @router.post("/devices/status", dependencies=[skill_token_dependency])
 def update_device_status(payload: DeviceStatusPayload) -> dict[str, str]:
     return device_service.update_status(

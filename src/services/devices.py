@@ -61,6 +61,34 @@ class DeviceService:
 
         return devices
 
+    def get_device_status(self, username: str, device_name: str) -> dict[str, Any]:
+        with self._db.cursor() as cur:
+            cur.execute(
+                """
+                SELECT d.name, d.serial_number, ad.status, ad.updated_at
+                FROM account_devices ad
+                JOIN users u ON ad.user_id = u.id
+                JOIN devices d ON ad.device_id = d.id
+                WHERE u.username = %s AND d.name = %s;
+                """,
+                (username, device_name),
+            )
+            row = cur.fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail="Device not associated with this account",
+            )
+
+        name, serial_number, status, updated_at = row
+        return {
+            "name": name,
+            "serial_number": serial_number,
+            "status": "on" if status else "off",
+            "last_updated": self._format_datetime(updated_at),
+        }
+
     def rename_device(self, username: str, current_name: str, new_name: str) -> dict[str, str]:
         _, device_id = self._get_device_association(username, current_name)
 

@@ -37,6 +37,7 @@ Ejecuta `SELECT 1` para confirmar la salud de la base. Respalda `/health/db`.
 | GET | `/health/db` | Comprueba conexión a PostgreSQL. | Ejecuta `SELECT 1`; responde 500 ante fallas. |
 | POST | `/users/register` | Registra un usuario nuevo. | Requiere `{ name, username, password }`; guarda password en bcrypt. |
 | GET | `/devices` | Lista los dispositivos de un usuario. | Parámetro `username`; solo devuelve asociaciones existentes; requiere `X-Skill-Token`. |
+| GET | `/devices/status` | Consulta el estado de un dispositivo puntual. | Parámetros `username` y `device_name`; responde 404 si no están asociados; requiere `X-Skill-Token`. |
 | POST | `/devices` | Alta o asociación de dispositivo. | Payload `{ username, device_name, serial_number, status? }`; evita seriales duplicados; requiere `X-Skill-Token`. |
 | POST | `/devices/status` | Enciende/apaga un dispositivo. | Payload `{ username, device_name, status }`; falla con 404 si no hay vínculo; requiere `X-Skill-Token`. |
 | PATCH | `/devices/name` | Renombra el dispositivo. | Payload `{ username, current_name, new_name }`; exige propiedad y nombre único; requiere `X-Skill-Token`. |
