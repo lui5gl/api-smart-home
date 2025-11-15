@@ -36,10 +36,10 @@ Ejecuta `SELECT 1` para confirmar la salud de la base. Respalda `/health/db`.
 | GET | `/health` | Verifica que la API esté viva. | Devuelve `{ "status": "ok" }`. |
 | GET | `/health/db` | Comprueba conexión a PostgreSQL. | Ejecuta `SELECT 1`; responde 500 ante fallas. |
 | POST | `/users/register` | Registra un usuario nuevo. | Requiere `{ name, username, password }`; guarda password en bcrypt. |
-| GET | `/devices` | Lista los dispositivos de un usuario. | Parámetro `username`; solo devuelve asociaciones existentes. |
-| POST | `/devices` | Alta o asociación de dispositivo. | Payload `{ username, device_name, serial_number, status? }`; evita seriales duplicados. |
-| POST | `/devices/status` | Enciende/apaga un dispositivo. | Payload `{ username, device_name, status }`; falla con 404 si no hay vínculo. |
-| PATCH | `/devices/name` | Renombra el dispositivo. | Payload `{ username, current_name, new_name }`; exige propiedad y nombre único. |
+| GET | `/devices` | Lista los dispositivos de un usuario. | Parámetro `username`; solo devuelve asociaciones existentes; requiere `X-Skill-Token`. |
+| POST | `/devices` | Alta o asociación de dispositivo. | Payload `{ username, device_name, serial_number, status? }`; evita seriales duplicados; requiere `X-Skill-Token`. |
+| POST | `/devices/status` | Enciende/apaga un dispositivo. | Payload `{ username, device_name, status }`; falla con 404 si no hay vínculo; requiere `X-Skill-Token`. |
+| PATCH | `/devices/name` | Renombra el dispositivo. | Payload `{ username, current_name, new_name }`; exige propiedad y nombre único; requiere `X-Skill-Token`. |
 
 ## Ciclo Típico
 1. **Registro** – Cliente llama a `/users/register` para crear cuenta.
@@ -56,6 +56,12 @@ Ejecuta `SELECT 1` para confirmar la salud de la base. Respalda `/health/db`.
 - Las contraseñas se almacenan como hashes bcrypt; nunca se guardan en texto plano.
 - Cada operación sobre dispositivos valida en SQL que el usuario realmente posee ese equipo.
 - No se cargan cuentas ni dispositivos por defecto; cualquier dato existente proviene de acciones reales.
+- Todas las rutas de control de dispositivos validan un encabezado `X-Skill-Token` que debe coincidir con `ALEXA_SKILL_TOKEN` en el `.env`; solo la Skill de Alexa o el Arduino deberían conocer ese secreto.
+
+## Autenticación para Alexa/Arduino
+1. `ensure_env_file()` genera `ALEXA_SKILL_TOKEN` si no existe. Copia ese valor para configurarlo en la Skill y en el Arduino (o lo que haga bridge con Alexa).
+2. Toda llamada a `/devices` (GET/POST/PATCH) y `/devices/status` debe llevar `X-Skill-Token: <valor>`; si falta o no coincide, la API responde `401 Unauthorized`.
+3. Para rotar el token, actualiza `ALEXA_SKILL_TOKEN` en el `.env`, reinicia el servicio y vuelve a desplegar/configurar los clientes.
 
 ## Observabilidad
 - `/health` y `/health/db` pueden usarse como healthchecks en Compose/Kubernetes.

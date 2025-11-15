@@ -1,8 +1,9 @@
 """API route definitions for the Smart Home service."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from .security import require_skill_token
 from .services import DeviceService, HealthService, UserService
 
 
@@ -10,6 +11,7 @@ router = APIRouter()
 health_service = HealthService()
 device_service = DeviceService()
 user_service = UserService()
+skill_token_dependency = Depends(require_skill_token)
 
 
 class DeviceStatusPayload(BaseModel):
@@ -47,12 +49,12 @@ def database_health_check() -> dict[str, str]:
     return health_service.check_database()
 
 
-@router.get("/devices")
+@router.get("/devices", dependencies=[skill_token_dependency])
 def list_user_devices(username: str) -> list[dict[str, str]]:
     return device_service.list_user_devices(username)
 
 
-@router.post("/devices/status")
+@router.post("/devices/status", dependencies=[skill_token_dependency])
 def update_device_status(payload: DeviceStatusPayload) -> dict[str, str]:
     return device_service.update_status(
         username=payload.username,
@@ -61,7 +63,7 @@ def update_device_status(payload: DeviceStatusPayload) -> dict[str, str]:
     )
 
 
-@router.patch("/devices/name")
+@router.patch("/devices/name", dependencies=[skill_token_dependency])
 def rename_device(payload: DeviceRenamePayload) -> dict[str, str]:
     return device_service.rename_device(
         username=payload.username,
@@ -70,7 +72,7 @@ def rename_device(payload: DeviceRenamePayload) -> dict[str, str]:
     )
 
 
-@router.post("/devices")
+@router.post("/devices", dependencies=[skill_token_dependency])
 def add_device(payload: DeviceCreatePayload) -> dict[str, str]:
     return device_service.add_device(
         username=payload.username,

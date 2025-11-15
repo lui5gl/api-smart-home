@@ -29,6 +29,7 @@ def ensure_env_file(env_path: str | Path | None = None) -> Dict[str, str | bool]
         "ADMIN_NAME": "Administrator",
         "ADMIN_USERNAME": "admin",
         "ADMIN_PASSWORD": _generate_secret(),
+        "ALEXA_SKILL_TOKEN": _generate_secret(),
     }
 
     lines = ["# Auto-generated configuration\n"]
