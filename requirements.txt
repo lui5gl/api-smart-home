@@ -2,3 +2,4 @@ fastapi
 psycopg[binary]
 uvicorn[standard]
 passlib[bcrypt]
+bcrypt<4
